@@ -1,0 +1,37 @@
+config {
+    type: "incremental",
+    uniqueKey: ["question_id"],
+    dependencies: ["qa_with_evaluation"],
+    tags: ["quality_data_prep"]
+}
+
+WITH
+  product_type_prompt AS (
+  SELECT
+    question_id,
+    question,
+    llm_response,
+    isResponseGood,
+    avg_distance,
+    CONCAT(
+    "Which of the following appliance types is the following question most related to?  Respond with only one of the following appliance types and no addtional text.\n\nProduct Types: Refrigerator,Range,Wall Oven,Cooktop,Washer,Dishwasher,Dryer \n\n Question: ", question) AS prompt
+  FROM
+    ${ref("qa_with_evaluation")}
+    ${when(incremental(), ` WHERE question_id NOT IN (SELECT question_id FROM ${self()})`) } 
+  )
+SELECT
+  question_id,
+  question,
+  llm_response,
+  isResponseGood,
+  ml_generate_text_llm_result AS product_type,
+  avg_distance
+FROM
+  ML.GENERATE_TEXT( 
+    MODEL ${constants.PROJECT_ID}.${constants.SCHEMA_NAME}.bqml_text_llm,
+    TABLE product_type_prompt,
+    STRUCT( 0.2 AS temperature,
+      64 AS max_output_tokens,
+      0.2 AS top_p,
+      5 AS top_k,
+      TRUE AS flatten_json_output))

@@ -1,0 +1,6 @@
+{
+  "name": "ts24-genai-dataform-pipeline",
+  "dependencies": {
+    "@dataform/core": "2.8.3"
+  }
+}

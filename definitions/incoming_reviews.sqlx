@@ -1,0 +1,32 @@
+config {
+    type: "incremental",   
+    uniqueKey: ["brand", "original_content", "product_type"],
+    tags: ["process_reviews"],
+    columns: {
+        review_ts: "Time at which the review was posted online", // Column descriptions are pushed to BigQuery.
+        brand: "Brand of the product being reviewed",
+        original_content: "Original review text.",
+        product_type: "The type of product being reviewed",
+    },
+    bigquery: {
+        partitionBy: "DATE(review_ts)",
+        updatePartitionFilter:
+            "review_ts >= timestamp_sub(current_timestamp(), interval 2 weeks)"
+    },
+    assertions: {
+      nonNull: ["original_content"]
+    }
+}
+
+SELECT
+  review_ts,
+  brand,
+  content AS original_content,
+  product_line AS product_type
+FROM
+  ${ref("consumer_review_working")}
+WHERE
+  content IS NOT NULL
+  ${when(incremental(), ` AND review_ts > (SELECT MAX(review_ts) FROM ${self()})`) }
+
+-- LIMIT 50  -- Uncomment for testing so we don't have to process all reviews

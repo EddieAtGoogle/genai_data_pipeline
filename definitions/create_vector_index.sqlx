@@ -1,0 +1,11 @@
+config {
+    type: "operations",
+    dependencies: ["reviews_with_embeddings"],
+    tags: ["vector_index_creation"]
+}
+
+  CREATE OR REPLACE VECTOR INDEX review_vector_index
+ON
+  ${ref("reviews_with_embeddings")}(text_embedding) 
+  OPTIONS(index_type = 'IVF',
+    distance_type = 'COSINE')

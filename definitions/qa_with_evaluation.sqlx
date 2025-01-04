@@ -1,0 +1,29 @@
+config {
+    type: "incremental",
+    uniqueKey: ["question_id"],
+    dependencies: ["questions_with_embeddings"],
+    tags: ["quality_data_prep"]
+}
+
+WITH evaluation_prompt AS (
+  SELECT
+    question_id,
+    question,
+    llm_response,
+    avg_distance,
+      CONCAT("Does the following answer adequately answer the question.  Respond with only YES or NO and no addtional text.\n\nAnswer: ",
+      llm_response,
+      "\n\n Question: ",
+      question) AS prompt
+  FROM
+    ${ref("questions_and_answers")} 
+    ${when(incremental(), ` WHERE question_id NOT IN (SELECT question_id FROM ${self()})`) }
+)
+SELECT question_id, question, llm_response, ml_generate_text_llm_result AS isResponseGood, avg_distance
+FROM
+  ML.GENERATE_TEXT(
+    MODEL ${constants.PROJECT_ID}.${constants.SCHEMA_NAME}.bqml_text_llm,
+    TABLE evaluation_prompt,
+    STRUCT(
+      0.2 AS temperature, 64 AS max_output_tokens, 0.2 AS top_p,
+      5 AS top_k, TRUE AS flatten_json_output))

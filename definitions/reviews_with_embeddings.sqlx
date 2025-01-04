@@ -1,0 +1,31 @@
+config {
+    type: "incremental",
+    dependencies: ["reviews_with_sentiment", "bqml_embedding_model"],
+    tags: ["process_reviews"]
+}
+
+SELECT
+  review_ts,
+  brand,
+  product_type,
+  generated_sentiment AS sentiment,
+  content AS review,
+  text_embedding,
+  statistics,
+  ml_embed_text_status
+FROM
+  ML.GENERATE_TEXT_EMBEDDING( MODEL ${constants.PROJECT_ID}.${constants.SCHEMA_NAME}.bqml_embedding_model,
+    (
+    SELECT
+      review_ts,
+      brand,
+      product_type,
+      review AS content,
+      generated_sentiment
+    FROM
+      ${ref("reviews_with_sentiment")}
+    WHERE
+      TRUE
+      ${when(incremental(), ` AND review_ts > (SELECT MAX(review_ts) FROM ${self()})`) }
+    ),
+    STRUCT(TRUE AS flatten_json_output))

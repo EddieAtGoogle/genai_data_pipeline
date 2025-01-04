@@ -1,0 +1,17 @@
+config {
+  type: "operations",
+  dependencies: ["questions_with_embeddings"],
+  tags: ["quality_data_prep"]
+}
+
+
+CREATE OR REPLACE MODEL
+  ${constants.PROJECT_ID}.${constants.SCHEMA_NAME}.kmeans_question_clustering
+OPTIONS
+  ( MODEL_TYPE='KMEANS',
+    NUM_CLUSTERS=5,
+    DISTANCE_TYPE = 'COSINE' ) AS
+SELECT
+  text_embedding
+FROM
+  ${ref("questions_with_embeddings")}

@@ -1,0 +1,12 @@
+config {
+  type: "operations",
+  tags: ["bqml_model"]
+}
+
+-- Creates a remote BQML model that lets us create embeddings of text  
+-- stored in BigQuery tables.
+
+CREATE OR REPLACE MODEL
+${constants.PROJECT_ID}.${constants.SCHEMA_NAME}.bqml_embedding_model
+REMOTE WITH CONNECTION `${constants.REMOTE_CONNECTION}`
+OPTIONS (REMOTE_SERVICE_TYPE = "${constants.EMBEDDING_REMOTE_SERVICE_TYPE}");

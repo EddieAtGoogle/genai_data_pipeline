@@ -1,0 +1,6 @@
+config {
+    type: "declaration",
+    database: "${constants.PROJECT_ID}",
+    schema: "${constants.SCHEMA_NAME}",
+    name: "consumer_review_working",
+}

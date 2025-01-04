@@ -1,0 +1,27 @@
+config {
+    type: "view",
+    materialized: true,
+    dependencies: ["qa_with_product_type", "question_themes"],
+    tags: ["quality_data_prep"]
+}
+
+
+SELECT
+  questions.question_id,
+  themes.cluster_id,
+  themes.theme,
+  questions.question,
+  llm_response,
+  isResponseGood,
+  product_type,
+  avg_distance
+FROM
+  ${ref("qa_with_product_type")} questions
+INNER JOIN
+  ${ref("questions_with_clusters")} mapping
+ON
+  questions.question_id = mapping.question_id
+INNER JOIN
+  ${ref("question_themes")} themes
+ON
+  mapping.centroid_id = themes.cluster_id

@@ -1,0 +1,12 @@
+config {
+  type: "operations",
+  tags: ["bqml_model"]
+}
+
+-- Creates a remote BQML model that lets us translate text stored in BigQuery 
+-- tables by using the Cloud Translation API..
+
+CREATE OR REPLACE MODEL
+${constants.PROJECT_ID}.${constants.SCHEMA_NAME}.bqml_text_llm
+REMOTE WITH CONNECTION `${constants.REMOTE_CONNECTION}` 
+OPTIONS (ENDPOINT = "${constants.TEXT_LLM_ENDPOINT}");

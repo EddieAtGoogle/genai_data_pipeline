@@ -1,0 +1,29 @@
+config {
+    type: "incremental",
+    uniqueKey: ["question_id"],
+    dependencies: ["question_clustering_model"],
+    tags: ["quality_data_prep"],
+    assertions: {
+      uniqueKey: ["question_id"],
+      nonNull: ["question_id", "question", "centroid_id"],
+      //rowConditions: [
+      //  'centroid_id < 5'
+      //]
+    }
+}
+
+SELECT
+  question_id,
+  question,
+  centroid_id
+FROM
+  ML.PREDICT( MODEL `${constants.PROJECT_ID}.${constants.SCHEMA_NAME}.kmeans_question_clustering`,
+    (
+    SELECT
+      question_id,
+      question,
+      text_embedding
+    FROM
+      ${ref("questions_with_embeddings")}
+      ${when(incremental(), ` WHERE question_id NOT IN (SELECT question_id FROM ${self()})`) })
+  )

@@ -1,0 +1,32 @@
+config {
+    type: "incremental",
+    dependencies: ["incoming_reviews", "bqml_text_llm"],
+    tags: ["process_reviews"]
+}
+
+SELECT
+  ml_generate_text_llm_result AS generated_sentiment,
+  original_content AS review,
+  review_ts,
+  brand,
+  product_type,
+  ml_generate_text_rai_result,
+  ml_generate_text_status
+FROM
+  ML.GENERATE_TEXT( MODEL ${constants.PROJECT_ID}.${constants.SCHEMA_NAME}.bqml_text_llm,
+    (
+    SELECT
+      CONCAT('${constants.SENTIMENT_ANALYSIS_PROMPT}', original_content, 'Sentiment:') AS prompt,
+      original_content,
+      brand,
+      review_ts,
+      product_type
+    FROM
+      ${ref("incoming_reviews")}
+      ${when(incremental(), ` WHERE review_ts > (SELECT MAX(review_ts) FROM ${self()})`) }
+    ),
+    STRUCT( 0.1 AS temperature,
+      32 AS max_output_tokens,
+      0.1 AS top_p,
+      10 AS top_k,
+      TRUE AS flatten_json_output))

@@ -1,0 +1,42 @@
+config {
+    type: "incremental",
+    dependencies: ["bqml_embedding_model"],
+    tags: ["quality_data_prep"],
+    assertions: {
+      uniqueKey: ["question_id"],
+      nonNull: ["brand", "product", "text_embedding"],
+      rowConditions: [
+        'LENGTH(question) > 0',
+        'ARRAY_LENGTH(text_embedding) = 768'
+      ]
+    }
+}
+
+SELECT
+  question_id,
+  content as question,
+  brand,
+  product,
+  timestamp,
+  text_embedding,
+  statistics,
+  ml_embed_text_status
+FROM
+  ML.GENERATE_TEXT_EMBEDDING( 
+    MODEL `${constants.PROJECT_ID}.${constants.SCHEMA_NAME}.bqml_embedding_model`,
+    (
+    SELECT
+      GENERATE_UUID() AS question_id,
+      questions.question AS content,
+      questions.* except(question)
+    FROM (
+      SELECT DISTINCT
+        timestamp,
+        brand,
+        question,
+        product
+      FROM
+        ${ref("questions")} 
+        ${when(incremental(), ` WHERE timestamp > (SELECT MAX(timestamp) FROM ${self()})`) }
+        ) questions),
+    STRUCT(TRUE AS flatten_json_output))
