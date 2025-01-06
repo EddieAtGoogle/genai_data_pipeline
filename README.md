@@ -1,8 +1,8 @@
 <div align="center">
 
-# GenAI Data Pipeline for Consumer Reviews
+# Building GenAI Data Pipelines with SQL (BigQuery Maching Learning & Dataform)
 
-🤖 A GenAI data pipeline leveraging Google Cloud's AI capabilities for advanced consumer review analytics.  Please feel free to use this as a starting point for your own projects.
+🤖 As enterprises deploy production GenAI applications, data analytics and engineering teams are increasingly tasked with maintaining the quality, freshness, and security of the data these models rely on and produce. Many of these teams are most comfortable working in a SQL-dominant environment, and would need to significantly upskill to perform this work by developing a substantial amount of Python code and leveraging tools like Tensorboard. These teams would benefit greatly from clear guidance on building data management and model evaluation pipelines using tools that more closely align with their skill sets, such as BQML and Dataform. This reposoitory provides guidance and sample code to lead teams through several common data management and model evaluation use cases.  Feel free to use this as a starting point for your own data pipelines.
 
 [![Built with Dataform](https://img.shields.io/badge/Built%20with-Dataform-blue)](https://cloud.google.com/dataform)
 [![GCP Ready](https://img.shields.io/badge/GCP-Ready-green)](https://cloud.google.com/)
