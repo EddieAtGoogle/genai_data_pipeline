@@ -1,84 +1,316 @@
+<div align="center">
+
 # GenAI Data Pipeline for Consumer Reviews
 
-A Dataform-based data pipeline that processes consumer reviews and questions using Google Cloud's AI capabilities, including sentiment analysis, text embeddings, and clustering.
+🤖 A production-grade data pipeline leveraging Google Cloud's AI capabilities for advanced consumer review analytics
 
-## Overview
+[![Built with Dataform](https://img.shields.io/badge/Built%20with-Dataform-blue)](https://cloud.google.com/dataform)
+[![GCP Ready](https://img.shields.io/badge/GCP-Ready-green)](https://cloud.google.com/)
+[![Uses Gemini](https://img.shields.io/badge/AI-Gemini%201.5-purple)](https://cloud.google.com/vertex-ai)
 
-This pipeline processes consumer product reviews and customer questions to derive insights using various AI/ML techniques:
+</div>
 
-- Sentiment analysis of customer reviews using Gemini 1.5
-- Vector embeddings generation for reviews and questions
-- Question clustering and theme identification
-- Product type classification
-- Quality assessment of question-answer pairs
+---
 
-## Architecture
+## 📋 Overview
 
-The pipeline is built using:
+Transform your customer feedback data into actionable insights using state-of-the-art AI/ML techniques:
 
-- **Dataform** for data transformation and orchestration
-- **BigQuery** as the data warehouse
-- **Google Cloud AI** services:
-  - Gemini 1.5 for text generation/analysis
-  - Text Embedding API for vector embeddings
-  - Vector Search capabilities
+- 🎯 Sentiment analysis using Gemini 1.5
+- 🔍 Vector embeddings for semantic search
+- 🔮 Intelligent question clustering
+- 📊 Automated theme identification
+- ⚡ Real-time product classification
 
-## Pipeline Components
+## 🏗️ Architecture
+
+<div align="center">
+
+![Architecture Diagram](./docs/assets/architecture.png)
+
+</div>
+
+Built on enterprise-grade Google Cloud technologies:
+
+- **Dataform** - Orchestration & transformation
+- **BigQuery** - Serverless data warehouse
+- **Vertex AI** - Machine learning operations
+  - Gemini 1.5
+  - Text Embedding API
+  - Vector Search
+
+## 🚀 Setup Guide
+
+Choose your preferred setup path:
+
+<details>
+<summary><h3>📱 Option A: Using Google Cloud Console (Recommended for Beginners)</h3></summary>
+
+### Step 1: Initial Setup
+
+1. **Access Google Cloud Console**
+   - Navigate to [console.cloud.google.com](https://console.cloud.google.com)
+   - Create or select your project
+   - Note your `Project ID` for later use
+
+2. **Enable Required APIs**
+   - Go to [APIs & Services](https://console.cloud.google.com/apis/dashboard)
+   - Click "Enable APIs and Services"
+   - Enable the following:
+     - BigQuery API
+     - BigQuery Connection API
+     - Cloud Storage API
+     - Vertex AI API
+
+### Step 2: Create Storage Bucket
+
+1. Navigate to [Cloud Storage](https://console.cloud.google.com/storage)
+2. Click "Create Bucket"
+   - Name: `your-project-consumer-reviews`
+   - Location: `us-central1`
+   - Default storage class: `Standard`
+   - Access control: `Uniform`
+3. Click "Create"
+4. Upload Data:
+   - Open your new bucket
+   - Click "Upload Files"
+   - Select `consumer_review_data.parquet`
+   - Wait for completion
+
+### Step 3: Initialize BigQuery Dataset
+
+1. Open [BigQuery Console](https://console.cloud.google.com/bigquery)
+2. Create Dataset:
+   - Click your project name
+   - Click "Create Dataset"
+   - Dataset ID: `consumer_reviews_dataset`
+   - Data location: `US (multi-region)`
+   - Click "Create dataset"
+3. Load Data:
+   - Click "Create Table"
+   - Source: Select "Google Cloud Storage"
+   - File format: `Parquet`
+   - Source path: `gs://your-project-consumer-reviews/consumer_review_data.parquet`
+   - Table name: `consumer_review_data`
+   - Schema: Select "Auto detect"
+   - Click "Create table"
+
+### Step 4: Configure Remote Connection
+
+1. **Create Connection**
+   - In BigQuery, click "More" → "Connections"
+   - Click "Create Connection"
+   - Configure:
+     ```
+     Connection type: Cloud Resource
+     Service: Vertex AI
+     Connection ID: vertex-ai
+     Location: us-central1
+     ```
+   - Click "Create"
+
+2. **Set Up Permissions**
+   - Go to [IAM & Admin](https://console.cloud.google.com/iam-admin)
+   - Find: `bq-connection-sa@your-project-id.iam.gserviceaccount.com`
+   - Add roles:
+     - Vertex AI User
+     - BigQuery Admin
+
+### Step 5: Update Configuration Files
+
+1. Edit `dataform.json`:
+   ```json
+   {
+     "defaultSchema": "consumer_reviews_dataset",
+     "defaultDatabase": "your-project-id",
+     "defaultLocation": "US"
+   }
+   ```
+
+2. Edit `includes/constants.js`:
+   ```javascript
+   const PROJECT_ID = "your-project-id";
+   const SCHEMA_NAME = "consumer_reviews_dataset";
+   const REMOTE_CONNECTION = "projects/your-project-id/locations/us-central1/connections/vertex-ai";
+   ```
+
+### Step 6: Verify Setup
+
+1. In BigQuery Console:
+   - Run: `SELECT COUNT(*) FROM consumer_reviews_dataset.consumer_review_data`
+2. Check Connection:
+   - Go to "Connections"
+   - Verify `vertex-ai` status is "Connected"
+
+</details>
+
+<details>
+<summary><h3>💻 Option B: Using Command Line</h3></summary>
+
+### Step 1: Initial Setup
+
+```bash
+# Set environment variables
+export PROJECT_ID="your-project-id"
+export BUCKET_NAME="${PROJECT_ID}-consumer-reviews"
+
+# Configure gcloud
+gcloud config set project $PROJECT_ID
+
+# Enable APIs
+gcloud services enable bigquery.googleapis.com
+gcloud services enable bigqueryconnection.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable aiplatform.googleapis.com
+```
+
+### Step 2: Create Storage Bucket
+
+```bash
+# Create bucket
+gsutil mb -l us-central1 gs://$BUCKET_NAME
+
+# Upload data
+gsutil cp consumer_review_data.parquet gs://$BUCKET_NAME/
+```
+
+### Step 3: Initialize BigQuery Dataset
+
+```bash
+# Create dataset
+bq mk --dataset \
+  --location=US \
+  ${PROJECT_ID}:consumer_reviews_dataset
+
+# Load data
+bq query --use_legacy_sql=false \
+  "LOAD DATA INTO \`${PROJECT_ID}.consumer_reviews_dataset.consumer_review_data\`
+   FROM FILES (
+     format = 'PARQUET',
+     uris = ['gs://${BUCKET_NAME}/consumer_review_data.parquet']
+   );"
+```
+
+### Step 4: Configure Remote Connection
+
+```bash
+# Create connection
+bq mk --connection \
+  --location=us-central1 \
+  --project_id=${PROJECT_ID} \
+  --connection_type=CLOUD_RESOURCE \
+  vertex-ai
+
+# Get service account
+export CONNECTION_SA=$(bq show --connection ${PROJECT_ID}.us-central1.vertex-ai \
+  | grep "serviceAccountId" | cut -d'"' -f4)
+
+# Grant permissions
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${CONNECTION_SA}" \
+  --role="roles/aiplatform.user"
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${CONNECTION_SA}" \
+  --role="roles/bigquery.admin"
+```
+
+### Step 5: Update Configuration Files
+
+```bash
+# Get connection ID
+export CONNECTION_ID=$(bq show --connection ${PROJECT_ID}.us-central1.vertex-ai \
+  | grep "name" | cut -d'"' -f4)
+
+# Update files (manual step)
+echo "Update dataform.json and constants.js with your project details"
+```
+
+### Step 6: Verify Setup
+
+```bash
+# Check data
+bq query --use_legacy_sql=false \
+  "SELECT COUNT(*) FROM ${PROJECT_ID}.consumer_reviews_dataset.consumer_review_data"
+
+# Verify connection
+bq show --connection ${PROJECT_ID}.us-central1.vertex-ai
+
+# Test Vertex AI access
+gcloud ai models list --region=us-central1
+```
+
+</details>
+
+## 🔄 Pipeline Components
 
 ### Review Processing
-
-1. `incoming_reviews` - Ingests and validates raw review data
-2. `reviews_with_sentiment` - Analyzes review sentiment using Gemini
-3. `reviews_with_embeddings` - Generates vector embeddings for reviews
-4. `create_vector_index` - Creates a vector search index for similarity matching
+1. `incoming_reviews` - Data ingestion & validation
+2. `reviews_with_sentiment` - Sentiment analysis
+3. `reviews_with_embeddings` - Vector embedding generation
+4. `create_vector_index` - Similarity search indexing
 
 ### Question Analysis
+1. `questions_with_embeddings` - Semantic embedding
+2. `questions_with_clusters` - K-means clustering
+3. `question_themes` - Theme generation
+4. `qa_with_evaluation` - Quality assessment
+5. `qa_with_product_type` - Product classification
+6. `qa_quality_data` - Analysis aggregation
 
-1. `questions_with_embeddings` - Generates embeddings for customer questions
-2. `questions_with_clusters` - Clusters similar questions using K-means
-3. `question_themes` - Generates theme summaries for question clusters
-4. `qa_with_evaluation` - Evaluates quality of question-answer pairs
-5. `qa_with_product_type` - Classifies questions by product type
-6. `qa_quality_data` - Combines all question analysis data
+## 🏷️ Tags
 
-### BQML Models
+- `process_reviews` - Review processing
+- `quality_data_prep` - Question analysis
+- `bqml_model` - Model operations
+- `vector_index_creation` - Search setup
+- `regenerate_question_themes` - Theme updates
 
-- `bqml_text_llm` - Remote model connection to Gemini 1.5
-- `bqml_embedding_model` - Remote model for text embeddings
-- `question_clustering_model` - K-means clustering model for questions
+## ✅ Data Quality
 
-## Setup
+Built-in data quality checks ensure:
+- ✓ Key uniqueness
+- ✓ Required field validation
+- ✓ Row-level conditions
+- ✓ Incremental processing
 
-1. Update `dataform.json` with your project ID and dataset name
-2. Configure `constants.js` with:
-   - PROJECT_ID
-   - SCHEMA_NAME
-   - REMOTE_CONNECTION
-   - Other AI service configurations
-
-## Tags
-
-The pipeline uses tags to organize operations:
-
-- `process_reviews` - Review processing operations
-- `quality_data_prep` - Question analysis operations
-- `bqml_model` - Model creation operations
-- `vector_index_creation` - Vector search setup
-- `regenerate_question_themes` - Theme generation
-
-## Data Quality
-
-The pipeline includes various data quality checks:
-
-- Uniqueness constraints on keys
-- Non-null assertions on critical fields
-- Row-level conditions for data validation
-- Incremental processing to handle new data efficiently
-
-## Dependencies
+## 📦 Dependencies
 
 - @dataform/core: 2.8.3
-- Google Cloud Platform services:
+- Google Cloud Platform:
   - BigQuery
   - Vertex AI (Gemini)
-  - AI Platform
+  - Cloud Storage
+
+## 🆘 Troubleshooting
+
+<details>
+<summary>Common Issues & Solutions</summary>
+
+### Permission Errors
+```bash
+# Verify IAM roles
+gcloud projects get-iam-policy $PROJECT_ID \
+  --flatten="bindings[].members" \
+  --format='table(bindings.role)' \
+  --filter="bindings.members:$(gcloud config get-value account)"
+```
+
+### Connection Issues
+```bash
+# Check API status
+gcloud services list --enabled | grep -E "bigquery|aiplatform"
+
+# Verify service account
+gcloud iam service-accounts describe ${CONNECTION_SA}
+```
+
+### Data Loading Issues
+```bash
+# Check job status
+bq show -j ${PROJECT_ID}:US.recent_job_id
+```
+
+</details>
+
+---
