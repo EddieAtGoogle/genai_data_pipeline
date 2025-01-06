@@ -2,7 +2,7 @@
 
 # GenAI Data Pipeline for Consumer Reviews
 
-🤖 A production-grade data pipeline leveraging Google Cloud's AI capabilities for advanced consumer review analytics
+🤖 A GenAI data pipeline leveraging Google Cloud's AI capabilities for advanced consumer review analytics.  Please feel free to use this as a starting point for your own projects.
 
 [![Built with Dataform](https://img.shields.io/badge/Built%20with-Dataform-blue)](https://cloud.google.com/dataform)
 [![GCP Ready](https://img.shields.io/badge/GCP-Ready-green)](https://cloud.google.com/)
@@ -20,7 +20,7 @@ Transform your customer feedback data into actionable insights using state-of-th
 - 🔍 Vector embeddings for semantic search
 - 🔮 Intelligent question clustering
 - 📊 Automated theme identification
-- ⚡ Real-time product classification
+- ⚡ Analytics on RAG system usage, quality and performance
 
 ## 🏗️ Architecture
 
