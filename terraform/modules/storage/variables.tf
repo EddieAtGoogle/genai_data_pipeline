@@ -112,6 +112,16 @@ variable "log_retention_days" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
+# Optional Variables - Access Control
+# ---------------------------------------------------------------------------------------------------------------------
+
+variable "bigquery_service_account_email" {
+  description = "The email address of the BigQuery service account that needs access to the storage bucket"
+  type        = string
+  default     = null  # If not provided, no BigQuery-specific IAM binding will be created
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
 # Validation Rules
 # ---------------------------------------------------------------------------------------------------------------------
 

@@ -10,9 +10,9 @@ CREATE OR REPLACE TABLE `consumer_reviews_dataset.consumer_review_data`
     text_embedding ARRAY<FLOAT64>
 );
 
--- Load data from Parquet file into the table
+-- Load data from the provided sample Parquet file into the table
 LOAD DATA INTO `consumer_reviews_dataset.consumer_review_data`
 FROM FILES (
     format = 'PARQUET',
-    uris = ['gs://your-bucket-name/consumer_review_data.parquet']
+    uris = ['gs://${PROJECT_ID}-consumer-reviews/raw/reviews/consumer_review_data.parquet']
 );

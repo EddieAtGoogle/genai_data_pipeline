@@ -137,3 +137,14 @@ resource "google_storage_bucket_iam_audit_config" "audit_config" {
     log_type = "DATA_WRITE"
   }
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# IAM Configuration
+# Grant BigQuery access to read from the bucket
+# ---------------------------------------------------------------------------------------------------------------------
+
+resource "google_storage_bucket_iam_member" "bigquery_access" {
+  bucket = google_storage_bucket.main.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${var.bigquery_service_account_email}"
+}

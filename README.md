@@ -39,6 +39,33 @@ Built on enterprise-grade Google Cloud technologies:
   - Text Embedding API
   - Vector Search
 
+## 🚀 Prerequisites Checklist
+
+Before starting the deployment, ensure you have the following prerequisites in place:
+
+### 1. Google Cloud Environment
+- [ ] A Google Cloud project with billing enabled
+- [ ] Owner or Editor role on the project
+
+### 2. Development Tools
+- [ ] Git (version >= 2.0)
+- [ ] Terraform (version >= 1.0)
+- [ ] Google Cloud SDK (version >= 440.0.0)
+
+### Quick Validation Commands
+```bash
+# Verify all required tools are installed
+gcloud --version
+git --version
+terraform --version
+
+# Configure gcloud with your project
+gcloud config set project PROJECT_ID
+
+# Verify project access
+gcloud projects describe PROJECT_ID
+```
+
 ## 🚀 Setup Guide
 
 Choose your preferred setup path:
@@ -74,7 +101,7 @@ Choose your preferred setup path:
 4. Upload Data:
    - Open your new bucket
    - Click "Upload Files"
-   - Select `consumer_review_data.parquet`
+   - Select the sample data file from `genai_data_pipeline/data/consumer_review_data.parquet`
    - Wait for completion
 
 ### Step 3: Initialize BigQuery Dataset
@@ -171,7 +198,7 @@ gcloud services enable aiplatform.googleapis.com
 gsutil mb -l us-central1 gs://$BUCKET_NAME
 
 # Upload data
-gsutil cp consumer_review_data.parquet gs://$BUCKET_NAME/
+gsutil cp genai_data_pipeline/data/consumer_review_data.parquet gs://$BUCKET_NAME/raw/reviews/
 ```
 
 ### Step 3: Initialize BigQuery Dataset
