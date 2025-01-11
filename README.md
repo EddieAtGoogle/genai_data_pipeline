@@ -1,12 +1,26 @@
 <div align="center">
 
-# Building GenAI Data Pipelines with SQL (BigQuery Maching Learning & Dataform)
+# Building GenAI Data Pipelines with SQL
 
-🤖 As enterprises deploy production GenAI applications, data analytics and engineering teams are increasingly tasked with maintaining the quality, freshness, and security of the data these models rely on and produce. Many of these teams are most comfortable working in a SQL-dominant environment, and would need to significantly upskill to perform this work by developing a substantial amount of Python code and leveraging tools like Tensorboard. These teams would benefit greatly from clear guidance on building data management and model evaluation pipelines using tools that more closely align with their skill sets, such as BQML and Dataform or dbt. This reposoitory provides guidance and sample code to lead teams through several common data management and model evaluation use cases.  Feel free to use this as a starting point for your own data pipelines.
+🎯 **Perfect for data teams who know SQL and want to build production-ready GenAI pipelines without Python expertise**
+
+🤖 Data analytics and engineering teams in enterprises are finding themselves responsible for GenAI data pipelines, often without extensive machine learning expertise. Many of these teams are most comfortable working in SQL, and traditional approaches would require significant upskilling in Python and ML frameworks. This repository bridges that gap by showing how to build sophisticated GenAI pipelines using familiar SQL-based tools.
+
+⚡ **Get Started in Minutes**: Deploy a complete GenAI pipeline with just SQL and a few commands.
+
+📚 **What You'll Learn**:
+
+✨ **Build** production-grade GenAI pipelines using SQL  
+🛡️ **Implement** best practices for data quality and security  
+📊 **Monitor** and evaluate GenAI model performance
+
+**Prerequisites**: SQL knowledge  
+**Not Required**: Python, Machine Learning expertise
 
 [![Built with Dataform](https://img.shields.io/badge/Built%20with-Dataform-blue)](https://cloud.google.com/dataform)
 [![GCP Ready](https://img.shields.io/badge/GCP-Ready-green)](https://cloud.google.com/)
 [![Uses Gemini](https://img.shields.io/badge/AI-Gemini%201.5-purple)](https://cloud.google.com/vertex-ai)
+[![SQL Only](https://img.shields.io/badge/SQL-Only-orange)](https://cloud.google.com/bigquery)
 
 </div>
 
@@ -65,6 +79,45 @@ gcloud config set project PROJECT_ID
 # Verify project access
 gcloud projects describe PROJECT_ID
 ```
+
+## 🚀 Terraform State Management
+
+This project supports two options for managing Terraform state:
+
+### Local State (Default)
+By default, Terraform will store state locally in your workspace. This is suitable for:
+- Individual learning and development
+- Quick prototyping
+- Local testing and experimentation
+
+### Remote State in Google Cloud Storage (Recommended for Teams)
+For team environments or production deployments, we recommend using Google Cloud Storage (GCS) for state management. This provides:
+- 🤝 Team collaboration capabilities
+- 🔒 State locking to prevent concurrent modifications
+- 🔄 Version history and backup
+- 🛡️ Better security through Google Cloud IAM
+
+To enable GCS state storage:
+
+```bash
+# 1. Create a GCS bucket for state storage
+export PROJECT_ID="your-project-id"
+gsutil mb -l us-central1 gs://${PROJECT_ID}-terraform-state
+
+# 2. Enable versioning for state history
+gsutil versioning set on gs://${PROJECT_ID}-terraform-state
+
+# 3. Update backend configuration
+# Uncomment and configure the backend block in terraform/backend.tf:
+terraform {
+  backend "gcs" {
+    bucket = "YOUR_PROJECT_ID-terraform-state"
+    prefix = "genai-pipeline"
+  }
+}
+```
+
+> **Note**: For this educational project, local state is perfectly fine for getting started. Consider switching to GCS state storage when working in a team or moving to production.
 
 ## 🚀 Setup Guide
 
