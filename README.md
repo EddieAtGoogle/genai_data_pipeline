@@ -53,6 +53,23 @@ Built on enterprise-grade Google Cloud technologies:
   - Text Embedding API
   - Vector Search
 
+### Dataform Configuration
+
+The project supports two options for Dataform repository configuration:
+
+1. **Default Repository (Recommended for Learning)**
+   - Uses Dataform's built-in repository
+   - Perfect for learning and experimentation
+   - No additional Git setup required
+   - Enabled by default
+
+2. **Remote Git Repository (Optional)**
+   - For production or team collaboration
+   - Requires a GitHub repository and personal access token
+   - Enable by setting `use_remote_git = true` in `terraform.tfvars`
+
+Choose the option that best suits your needs. For most learning scenarios, the default repository is recommended.
+
 ## 🚀 Prerequisites Checklist
 
 Before starting the deployment, ensure you have the following prerequisites in place:
@@ -66,19 +83,51 @@ Before starting the deployment, ensure you have the following prerequisites in p
 - [ ] Terraform (version >= 1.0)
 - [ ] Google Cloud SDK (version >= 440.0.0)
 
-### Quick Validation Commands
+### 3. Required APIs
+Run this command to enable necessary APIs:
 ```bash
-# Verify all required tools are installed
-gcloud --version
-git --version
-terraform --version
-
-# Configure gcloud with your project
-gcloud config set project PROJECT_ID
-
-# Verify project access
-gcloud projects describe PROJECT_ID
+gcloud services enable \
+  secretmanager.googleapis.com \
+  dataform.googleapis.com \
+  bigquery.googleapis.com \
+  artifactregistry.googleapis.com
 ```
+
+## 🚀 Quick Start
+
+1. **Clone the Repository**
+   ```bash
+   git clone <repository-url>
+   cd genai_data_pipeline
+   ```
+
+2. **Create Required Google Groups**
+   - Create three Google Groups in your workspace:
+     - Dataform Users (e.g., `dataform-users@your-domain.com`)
+     - Data Readers (e.g., `data-readers@your-domain.com`)
+     - Data Owner (use an existing team email)
+
+3. **Configure Terraform Variables**
+   ```bash
+   cd terraform
+   cp terraform.tfvars.example terraform.tfvars
+   ```
+   Edit `terraform.tfvars` and set:
+   - Your `project_id`
+   - Your Google Groups emails
+   - Optionally customize other settings
+
+4. **Initialize and Apply Terraform**
+   ```bash
+   terraform init
+   terraform plan
+   terraform apply
+   ```
+
+5. **Verify Deployment**
+   - Visit the [Dataform UI](https://console.cloud.google.com/bigquery/dataform)
+   - Select your project and repository
+   - Try creating a new definition
 
 ## 🚀 Terraform State Management
 
@@ -392,5 +441,60 @@ bq show -j ${PROJECT_ID}:US.recent_job_id
 ```
 
 </details>
+
+## 🔑 Access Management
+
+### Dataform User Access
+This project uses Google Groups to manage Dataform access. Users need to be members of the Dataform users group to:
+- Create and edit Dataform definitions
+- Execute Dataform workflows
+- View and query data in BigQuery
+
+#### Setting up Dataform Access
+1. Create a Google Group for Dataform users:
+   ```bash
+   # Using Google Workspace Admin Console or gcloud
+   gcloud identity groups create dataform-users@your-domain.com \
+     --organization=your-org-id \
+     --display-name="Dataform Users"
+   ```
+
+2. Add members to the group:
+   ```bash
+   gcloud identity groups memberships add \
+     --group-email=dataform-users@your-domain.com \
+     --member-email=user@your-domain.com
+   ```
+
+3. Update `terraform.tfvars` with your group:
+   ```hcl
+   dataform_users_group = "dataform-users@your-domain.com"
+   ```
+
+4. Apply the Terraform configuration:
+   ```bash
+   terraform apply
+   ```
+
+#### Verifying Access
+After setup, users can verify their access:
+1. Visit the [Dataform UI](https://console.cloud.google.com/bigquery/dataform)
+2. Select your project and repository
+3. Try creating a new definition or running a workflow
+
+#### Troubleshooting Access Issues
+If users can't access Dataform:
+1. Verify group membership:
+   ```bash
+   gcloud identity groups memberships list \
+     --group-email=dataform-users@your-domain.com
+   ```
+
+2. Check IAM bindings:
+   ```bash
+   gcloud projects get-iam-policy $PROJECT_ID \
+     --flatten="bindings[].members" \
+     --filter="bindings.role:dataform.developer"
+   ```
 
 ---

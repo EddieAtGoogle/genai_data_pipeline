@@ -52,4 +52,18 @@ output "custom_role_permissions" {
     dataform_executor = google_project_iam_custom_role.dataform_executor.permissions
     bigquery_loader  = google_project_iam_custom_role.bigquery_loader.permissions
   }
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Dataform User Access
+# Information about roles granted to Dataform users
+# ---------------------------------------------------------------------------------------------------------------------
+
+output "dataform_user_roles" {
+  description = "List of roles assigned to Dataform users group"
+  value = [
+    "roles/dataform.developer",
+    "roles/bigquery.jobUser",
+    "roles/bigquery.dataViewer"
+  ]
 } 

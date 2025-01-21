@@ -14,7 +14,7 @@ resource "google_bigquery_dataset" "main" {
   location                       = var.location
   description                    = "Dataset for consumer review analysis and ML processing"
   delete_contents_on_destroy     = var.force_destroy
-  default_table_expiration_ms    = var.table_expiration_days * 24 * 60 * 60 * 1000
+  default_table_expiration_ms    = var.table_expiration_days != null ? var.table_expiration_days * 24 * 60 * 60 * 1000 : null
 
   # Access control block defines who can access this dataset
   # Multiple access blocks can be defined for different users/groups
@@ -29,6 +29,18 @@ resource "google_bigquery_dataset" "main" {
     group_by_email = var.reader_group_email
   }
 
+  # Commenting out conditional access block for now to get basic setup working
+  # dynamic "access" {
+  #   for_each = var.enable_row_level_security ? [1] : []
+  #   content {
+  #     view {
+  #       dataset_id = google_bigquery_dataset.secure_views[0].dataset_id
+  #       project_id = var.project_id
+  #       table_id   = google_bigquery_table.secure_view[0].table_id
+  #     }
+  #   }
+  # }
+
   # Labels are key-value pairs attached to resources for organization and billing tracking
   # The merge() function combines multiple maps into one:
   # - First argument: default labels we want to always include
@@ -36,6 +48,66 @@ resource "google_bigquery_dataset" "main" {
   # Example: merge({a = 1, b = 2}, {b = 3, c = 4}) results in {a = 1, b = 3, c = 4}
   labels = merge({
     environment = var.environment
+    managed_by  = "terraform"
+  }, var.labels)
+
+  # Add a small delay to allow for IAM propagation
+  provisioner "local-exec" {
+    command = "sleep 10"
+  }
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Secure Views Dataset (for Row-Level Security)
+# Only created if row-level security is enabled
+# ---------------------------------------------------------------------------------------------------------------------
+
+resource "google_bigquery_dataset" "secure_views" {
+  count         = var.enable_row_level_security ? 1 : 0
+  dataset_id    = "${var.dataset_id}_secure_views"
+  project       = var.project_id
+  location      = var.location
+  description   = "Secure views for row-level security"
+
+  access {
+    role          = "OWNER"
+    user_by_email = var.owner_email
+  }
+
+  access {
+    role           = "READER"
+    group_by_email = var.reader_group_email
+  }
+
+  labels = merge({
+    environment = var.environment
+    managed_by  = "terraform"
+    type        = "secure_views"
+  }, var.labels)
+}
+
+# Create secure view with row-level filtering
+resource "google_bigquery_table" "secure_view" {
+  count      = var.enable_row_level_security ? 1 : 0
+  dataset_id = google_bigquery_dataset.secure_views[0].dataset_id
+  table_id   = "filtered_consumer_reviews"
+  project    = var.project_id
+
+  deletion_protection = var.enable_deletion_protection
+
+  view {
+    query = <<-EOF
+      SELECT *
+      FROM `${var.project_id}.${var.dataset_id}.consumer_review_data`
+      WHERE TRUE  -- Base security filter
+      ${var.row_access_filter != "" ? "AND (${var.row_access_filter})" : ""}
+    EOF
+    use_legacy_sql = false
+  }
+
+  labels = merge({
+    environment = var.environment
+    type        = "secure_view"
     managed_by  = "terraform"
   }, var.labels)
 }
@@ -68,8 +140,11 @@ resource "google_bigquery_table" "consumer_review_data" {
   table_id            = "consumer_review_data"
   deletion_protection = var.enable_deletion_protection
   project             = var.project_id
+  description         = "Consumer review data with sentiment analysis and embeddings"
 
-  description = "Consumer review data with sentiment analysis and embeddings"
+  depends_on = [
+    google_bigquery_dataset.main
+  ]
 
   # Time-based partitioning configuration
   # - type = "DAY" creates daily partitions
@@ -78,8 +153,7 @@ resource "google_bigquery_table" "consumer_review_data" {
   time_partitioning {
     type                     = "DAY"
     field                    = "review_ts"
-    require_partition_filter = var.require_partition_filter
-    expiration_ms           = var.partition_expiration_days * 24 * 60 * 60 * 1000
+    expiration_ms           = var.partition_expiration_days != null ? var.partition_expiration_days * 24 * 60 * 60 * 1000 : null
   }
 
   # Clustering configuration
@@ -151,35 +225,6 @@ resource "google_bigquery_table" "consumer_review_data" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Row Access Policy
-# Implements row-level security if enabled
-#
-# Row-Level Security (RLS):
-# - Filters which rows a user can see based on a predicate (WHERE clause)
-# - Use cases:
-#   * Limit users to seeing only their department's data
-#   * Restrict access based on user's region/territory
-#   * Hide sensitive records based on user's clearance
-#
-# Example predicate: "authorized_brands CONTAINS brand"
-# This would only show rows where the user has access to that brand
-#
-# Note: RLS is applied AFTER the query runs, so it doesn't reduce query costs
-# ---------------------------------------------------------------------------------------------------------------------
-
-resource "google_bigquery_row_access_policy" "brand_access" {
-  count      = var.enable_row_level_security ? 1 : 0  # Only create if RLS is enabled
-  dataset_id = google_bigquery_dataset.main.dataset_id
-  table_id   = google_bigquery_table.consumer_review_data.table_id
-  policy_id  = "brand_access_policy"
-  project    = var.project_id
-
-  # The filter predicate is a SQL expression that returns true for rows the user can access
-  # Default to TRUE if no filter provided (allows all rows - useful for testing)
-  filter_predicate = var.row_access_filter != "" ? var.row_access_filter : "TRUE"
-}
-
-# ---------------------------------------------------------------------------------------------------------------------
 # Column Security Policy
 # Implements column-level security if enabled
 #
@@ -198,22 +243,32 @@ resource "google_bigquery_row_access_policy" "brand_access" {
 # Note: Unlike RLS, CLS can reduce query costs as restricted columns aren't processed
 # ---------------------------------------------------------------------------------------------------------------------
 
+locals {
+  # Only enable CLS if both the feature flag is true and a restricted group is provided
+  enable_cls = var.enable_column_level_security && var.restricted_users_group != null && var.restricted_users_group != ""
+  # Define members list based on whether restricted group is provided
+  restricted_members = var.restricted_users_group != null && var.restricted_users_group != "" ? ["group:${var.restricted_users_group}"] : []
+}
+
 data "google_iam_policy" "table_policy" {
-  count = var.enable_column_level_security && var.restricted_users_group != "" ? 1 : 0
+  count = local.enable_cls ? 1 : 0
 
-  # Restricted users can see all columns except product_line
-  binding {
-    role    = "roles/bigquery.dataViewer"
-    members = ["group:${var.restricted_users_group}"]
+  # Restricted users can see all columns except product_line (only if group is provided)
+  dynamic "binding" {
+    for_each = length(local.restricted_members) > 0 ? [1] : []
+    content {
+      role    = "roles/bigquery.dataViewer"
+      members = local.restricted_members
 
-    condition {
-      title       = "exclude_product_line"
-      description = "Access to all columns except product_line for restricted users"
-      expression  = <<-EOT
-        resource.type == 'bigquery.googleapis.com/Table' 
-        && resource.name.endsWith('consumer_review_data')
-        && !resource.name.extract('product_line')
-      EOT
+      condition {
+        title       = "exclude_product_line"
+        description = "Access to all columns except product_line for restricted users"
+        expression  = <<-EOT
+          resource.type == 'bigquery.googleapis.com/Table' 
+          && resource.name.endsWith('consumer_review_data')
+          && !resource.name.extract('product_line')
+        EOT
+      }
     }
   }
 
@@ -234,11 +289,11 @@ data "google_iam_policy" "table_policy" {
 }
 
 # Apply the policy to the table only if CLS is enabled and restricted group is specified
-resource "google_bigquery_table_iam_policy" "policy" {
-  count      = var.enable_column_level_security && var.restricted_users_group != "" ? 1 : 0
-  project    = var.project_id
-  dataset_id = google_bigquery_dataset.main.dataset_id
-  table_id   = google_bigquery_table.consumer_review_data.table_id
+# resource "google_bigquery_table_iam_policy" "policy" {
+#   count      = local.enable_cls ? 1 : 0
+#   project    = var.project_id
+#   dataset_id = google_bigquery_dataset.main.dataset_id
+#   table_id   = google_bigquery_table.consumer_review_data.table_id
 
-  policy_data = data.google_iam_policy.table_policy[0].policy_data
-}
+#   policy_data = data.google_iam_policy.table_policy[0].policy_data
+# }

@@ -1,0 +1,26 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# Required Variables - PLEASE CONFIGURE THESE
+# ---------------------------------------------------------------------------------------------------------------------
+
+project_id = "your-project-id"              # Your GCP project ID
+region     = "us-central1"                  # Primary region for resource deployment
+dataset_id = "consumer_reviews_dataset"      # Name for your BigQuery dataset
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Access Configuration - REQUIRED
+# Create these Google Groups before deploying
+# ---------------------------------------------------------------------------------------------------------------------
+
+dataform_users_group = "dataform-users@your-domain.com"        # Group for Dataform access
+owner_email         = "data-owner@your-domain.com"            # Dataset owner email
+reader_group_email  = "data-readers@your-domain.com"          # Group for read access
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Optional Project Configuration - Defaults are suitable for learning
+# Uncomment and modify only if you need to customize
+# ---------------------------------------------------------------------------------------------------------------------
+
+# environment                = "dev"          # Deployment environment
+# enable_deletion_protection = true           # Prevent accidental table deletion
+# table_expiration_days     = 90             # Days until tables auto-delete
+# enable_column_level_security = false        # Enable column access control 

@@ -18,6 +18,11 @@ variable "bigquery_service_account_email" {
   type        = string
 }
 
+variable "dataform_users_group" {
+  description = "Email address of the Google Group whose members should have Dataform developer access (e.g., 'dataform-users@company.com')"
+  type        = string
+}
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Optional Variables
 # These variables have defaults and can be optionally overridden

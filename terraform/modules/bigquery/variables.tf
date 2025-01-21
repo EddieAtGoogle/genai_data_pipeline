@@ -56,6 +56,12 @@ variable "reader_group_email" {
   default     = null
 }
 
+variable "restricted_users_group" {
+  description = "Email of the Google Group whose members should have restricted access"
+  type        = string
+  default     = null
+}
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Optional Variables - Table Configuration
 # ---------------------------------------------------------------------------------------------------------------------
@@ -63,13 +69,13 @@ variable "reader_group_email" {
 variable "table_expiration_days" {
   description = "Number of days after which tables will expire"
   type        = number
-  default     = null
+  default     = 90
 }
 
 variable "partition_expiration_days" {
   description = "Number of days after which partitions will expire"
   type        = number
-  default     = null
+  default     = 30
 }
 
 variable "enable_deletion_protection" {
@@ -91,23 +97,17 @@ variable "require_partition_filter" {
 variable "enable_column_level_security" {
   description = "Whether to enable column-level security. By default, all authenticated users can see all columns."
   type        = bool
-  default     = false
-}
-
-variable "restricted_users_group" {
-  description = "Email of the Google Group whose members should NOT see the product_line column (e.g., 'restricted-users@company.com'). Leave empty to allow all users to see all columns."
-  type        = string
-  default     = ""
+  default     = true
 }
 
 variable "enable_row_level_security" {
-  description = "Whether to enable row-level security"
+  description = "Whether to enable row-level security using secure views"
   type        = bool
   default     = false
 }
 
 variable "row_access_filter" {
-  description = "The predicate to apply for row-level security"
+  description = "SQL WHERE clause to filter rows in the secure view. Example: 'brand IN (SELECT allowed_brand FROM authorized_brands)'"
   type        = string
   default     = ""
 }

@@ -4,13 +4,13 @@ variable "project_id" {
 }
 
 variable "set_resource_location_policy" {
-  description = "Whether to set the resource location organization policy"
+  description = "Whether to set the resource location organization policy. Requires organization-level permissions."
   type        = bool
   default     = false
 }
 
 variable "allowed_regions" {
-  description = "List of allowed GCP regions for resource creation"
+  description = "List of allowed GCP regions for resource creation. Only used if set_resource_location_policy is true."
   type        = list(string)
   default     = ["us-central1", "us-east1", "us-west1"]
 }
@@ -28,7 +28,7 @@ variable "validate_billing" {
 }
 
 variable "create_dataform_role" {
-  description = "Whether to create the custom Dataform role"
+  description = "Whether to create the custom Dataform role. Requires permission to create custom roles. If false, use predefined roles instead."
   type        = bool
-  default     = true
+  default     = false
 } 

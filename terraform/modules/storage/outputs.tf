@@ -23,19 +23,14 @@ output "bucket_self_link" {
 # Standard paths within the bucket for different types of data
 # ---------------------------------------------------------------------------------------------------------------------
 
-output "raw_data_path" {
-  description = "The path where raw data should be uploaded"
-  value       = "gs://${google_storage_bucket.main.name}/raw/reviews/"
+output "data_path" {
+  description = "The path where production data files are stored"
+  value       = "gs://${google_storage_bucket.main.name}/data/"
 }
 
-output "processed_data_path" {
-  description = "The path where processed data will be stored"
-  value       = "gs://${google_storage_bucket.main.name}/processed/"
-}
-
-output "temp_data_path" {
-  description = "The path for temporary data storage"
-  value       = "gs://${google_storage_bucket.main.name}/temp/"
+output "samples_path" {
+  description = "The path where sample datasets are stored"
+  value       = "gs://${google_storage_bucket.main.name}/samples/"
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -45,7 +40,7 @@ output "temp_data_path" {
 
 output "versioning_enabled" {
   description = "Whether object versioning is enabled"
-  value       = google_storage_bucket.main.versioning[0].enabled
+  value       = var.enable_versioning
 }
 
 output "encryption_type" {
@@ -58,17 +53,17 @@ output "encryption_type" {
 # Details about logging configuration when enabled
 # ---------------------------------------------------------------------------------------------------------------------
 
-output "access_logging_enabled" {
-  description = "Whether access logging is enabled"
-  value       = var.enable_access_logs
+output "logging_enabled" {
+  description = "Whether logging is enabled (access or audit)"
+  value       = var.enable_access_logs || var.enable_audit_logs
 }
 
-output "access_logging_bucket" {
-  description = "The name of the access logging bucket (if enabled)"
-  value       = var.enable_access_logs ? google_storage_bucket.access_logs[0].name : null
+output "logging_bucket" {
+  description = "The name of the logging bucket (if enabled)"
+  value       = try(google_storage_bucket.access_logs[0].name, null)
 }
 
-output "audit_logging_enabled" {
-  description = "Whether audit logging is enabled"
-  value       = var.enable_audit_logs
+output "logging_path" {
+  description = "The path where logs are stored (if enabled)"
+  value       = var.enable_access_logs || var.enable_audit_logs ? "gs://${google_storage_bucket.access_logs[0].name}/logs/" : null
 }

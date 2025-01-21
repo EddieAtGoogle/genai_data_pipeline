@@ -100,6 +100,42 @@ resource "google_project_iam_member" "bigquery_storage_viewer" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
+# Dataform User Access
+# Grant necessary permissions to users who need to work with Dataform
+# ---------------------------------------------------------------------------------------------------------------------
+
+# Grant Dataform editor access to users
+# This role allows users to:
+# - Create and edit Dataform definitions
+# - Execute Dataform workflows
+# - View compilation results
+resource "google_project_iam_member" "dataform_developers" {
+  project = var.project_id
+  role    = "roles/dataform.editor"
+  member  = "group:${var.dataform_users_group}"
+}
+
+# Grant BigQuery job user access to users
+# This role allows users to:
+# - Execute BigQuery jobs through Dataform
+# - View query results
+resource "google_project_iam_member" "dataform_bigquery_users" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "group:${var.dataform_users_group}"
+}
+
+# Grant BigQuery data viewer access to users
+# This role allows users to:
+# - View BigQuery datasets and tables
+# - Read data from tables
+resource "google_project_iam_member" "dataform_bigquery_viewers" {
+  project = var.project_id
+  role    = "roles/bigquery.dataViewer"
+  member  = "group:${var.dataform_users_group}"
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
 # Optional: Additional Security Controls
 # These resources are created only if specified in the module variables
 # ---------------------------------------------------------------------------------------------------------------------
@@ -116,7 +152,7 @@ resource "google_project_iam_binding" "time_based_access" {
 
   condition {
     title       = "access_during_business_hours"
-    description = "Only allow access during business hours"
-    expression  = "time.getHours(timestamp) >= 8 && time.getHours(timestamp) < 18"
+    description = "Only allow access during business hours (8 AM to 6 PM)"
+    expression  = "request.time.getHours() >= 8 && request.time.getHours() < 18"
   }
 } 

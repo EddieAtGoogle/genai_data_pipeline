@@ -19,9 +19,10 @@ resource "google_project_service" "required_apis" {
 }
 
 # Check if billing is enabled
-data "google_project" "project" {
-  project_id = var.project_id
-}
+# Commented out as it's not needed for project validation
+# data "google_project" "project" {
+#   project_id = var.project_id
+# }
 
 # Validate project setup
 resource "null_resource" "project_validation" {
@@ -37,12 +38,19 @@ resource "null_resource" "project_validation" {
       fi
     EOT
   }
-
-  depends_on = [data.google_project.project]
 }
 
-# Create a custom role for minimal Dataform permissions
+# ---------------------------------------------------------------------------------------------------------------------
+# Optional: Custom Role for Dataform (Requires Organization-Level Permissions)
+# This block will only be created if create_dataform_role = true and the user has sufficient permissions
+# If you don't have permission to create custom roles, set create_dataform_role = false in terraform.tfvars
+# and manually grant the following predefined roles instead:
+# - roles/dataform.editor
+# - roles/bigquery.dataEditor
+# ---------------------------------------------------------------------------------------------------------------------
+
 resource "google_project_iam_custom_role" "dataform_minimal" {
+  count       = var.create_dataform_role ? 1 : 0
   role_id     = "dataform_minimal"
   title       = "Minimal Dataform Role"
   description = "Minimal set of permissions required for Dataform operations"
@@ -57,8 +65,13 @@ resource "google_project_iam_custom_role" "dataform_minimal" {
   ]
 }
 
-# Set up basic project-level metadata
-resource "google_project_organization_policy" "resource_location" {
+# ---------------------------------------------------------------------------------------------------------------------
+# Optional: Resource Location Policy (Requires Organization-Level Permissions)
+# This block will only be created if set_resource_location_policy = true and the user has sufficient permissions
+# If you don't have organization-level permissions, set set_resource_location_policy = false in terraform.tfvars
+# ---------------------------------------------------------------------------------------------------------------------
+
+/* resource "google_project_organization_policy" "resource_location" {
   count      = var.set_resource_location_policy ? 1 : 0
   project    = var.project_id
   constraint = "constraints/gcp.resourceLocations"
@@ -68,4 +81,4 @@ resource "google_project_organization_policy" "resource_location" {
       values = var.allowed_regions
     }
   }
-} 
+}  */

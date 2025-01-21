@@ -126,13 +126,13 @@ variable "bigquery_service_account_email" {
 # ---------------------------------------------------------------------------------------------------------------------
 
 variable "min_retention_days" {
-  description = "Minimum number of days to retain objects (if set)"
+  description = "Minimum number of days to retain objects. Set to null to disable minimum retention."
   type        = number
   default     = null
 
   validation {
-    condition     = var.min_retention_days == null || (var.min_retention_days >= 1 && var.min_retention_days <= 3650)
-    error_message = "If set, min_retention_days must be between 1 and 3650."
+    condition     = try(var.min_retention_days == null || (var.min_retention_days >= 1 && var.min_retention_days <= 3650), true)
+    error_message = "When set, minimum retention days must be between 1 and 3650 days."
   }
 }
 

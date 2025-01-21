@@ -3,3 +3,21 @@ constants.original
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 terraform_plan.md
+
+# Terraform
+terraform.tfvars
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform_plan.txt
+tfplan.binary
+
+# Local development
+.DS_Store
+*.log
+
+# Credentials
+package-lock.json
+.env
+credentials/

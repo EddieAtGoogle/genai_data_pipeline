@@ -5,6 +5,7 @@
 
 resource "google_secret_manager_secret" "git_auth" {
   provider = google-beta
+  count    = var.use_remote_git && var.git_auth_token != null ? 1 : 0
 
   secret_id = var.secret_id != "" ? var.secret_id : "dataform-git-token"
   project   = var.project_id
@@ -20,69 +21,93 @@ resource "google_secret_manager_secret" "git_auth" {
 
 resource "google_secret_manager_secret_version" "git_auth" {
   provider = google-beta
+  count    = var.use_remote_git && var.git_auth_token != null ? 1 : 0
 
-  secret      = google_secret_manager_secret.git_auth.id
+  secret      = google_secret_manager_secret.git_auth[0].id
   secret_data = var.git_auth_token
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Dataform Repository
-# This resource creates and manages a Dataform repository in your GCP project.
-#
-# Key Features:
-# - Git integration for version control
-# - Automated releases
-# - Scheduled transformations
+# This resource creates a Dataform repository that can optionally use a remote Git repository
 # ---------------------------------------------------------------------------------------------------------------------
 
-resource "google_dataform_repository" "genai_pipeline" {
-  provider = google-beta  # Dataform requires the beta provider
+locals {
+  # Configuration
+  create_secret = var.use_remote_git && var.git_auth_token != null
+  repository_name = "${var.repository_name}-${var.environment}"
+  secret_id = var.secret_id != null ? var.secret_id : "dataform-git-token"
+  
+  # Safe reference to secret version
+  secret_version = local.create_secret ? google_secret_manager_secret_version.git_token[0].name : null
+}
 
-  name     = var.repository_name != "" ? var.repository_name : "genai-pipeline"
-  region   = var.region
-  project  = var.project_id
+# Create secret for Git token only if using remote Git
+resource "google_secret_manager_secret" "git_token" {
+  provider = google-beta
+  count    = local.create_secret ? 1 : 0
 
-  # Git remote settings for version control
-  # This connects your Dataform repository to a Git repository
-  git_remote_settings {
-    url                                 = var.git_remote_url
-    default_branch                      = var.default_branch
-    authentication_token_secret_version = google_secret_manager_secret_version.git_auth.name
+  project   = var.project_id
+  secret_id = local.secret_id
+
+  replication {
+    auto {}
   }
 
-  depends_on = [google_secret_manager_secret_version.git_auth]
+  labels = merge({
+    purpose = "dataform-git-auth"
+  }, var.labels)
+}
+
+# Store Git token in secret only if using remote Git
+resource "google_secret_manager_secret_version" "git_token" {
+  provider = google-beta
+  count    = local.create_secret ? 1 : 0
+
+  secret      = google_secret_manager_secret.git_token[0].id
+  secret_data = var.git_auth_token
+}
+
+# Create Dataform repository
+resource "google_dataform_repository" "repository" {
+  provider = google-beta
+  project  = var.project_id
+  region   = var.region
+  name     = local.repository_name
+
+  # Only include Git configuration if using remote Git
+  dynamic "git_remote_settings" {
+    for_each = var.use_remote_git ? [1] : []
+    content {
+      url = var.git_remote_url
+      default_branch = "main"
+      authentication_token_secret_version = local.secret_version
+    }
+  }
+
+  workspace_compilation_overrides {
+    default_database = var.project_id
+  }
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Release Configuration
-# This resource configures automated releases for your Dataform repository.
-#
-# Features:
-# - Scheduled releases (default: weekly on Monday at 4am)
-# - Compilation settings
-# - Database configuration
+# Sets up automated releases of Dataform definitions
 # ---------------------------------------------------------------------------------------------------------------------
 
-resource "google_dataform_repository_release_config" "weekly_release" {
-  provider = google-beta
-
-  project    = var.project_id
-  region     = var.region
-  repository = google_dataform_repository.genai_pipeline.name
-  name       = var.release_config_name != "" ? var.release_config_name : "weekly-release"
-
-  # Git branch or commit to release from
-  git_commitish = var.default_branch
+resource "google_dataform_repository_release_config" "weekly" {
+  provider         = google-beta
+  project          = var.project_id
+  region           = var.region
+  repository       = google_dataform_repository.repository.name
+  name             = var.release_config_name
   
-  # Schedule releases using cron syntax
-  # Default: Every Monday at 4am
-  # Override using var.release_schedule if needed
-  cron_schedule = var.release_schedule
-
-  # Compilation configuration for the release
+  # Git configuration
+  git_commitish    = var.use_remote_git ? "main" : "HEAD"
+  
+  cron_schedule    = var.release_schedule
+  
   code_compilation_config {
     default_database = var.project_id
-    default_schema   = var.dataset_id
-    default_location = var.compilation_location
   }
 }

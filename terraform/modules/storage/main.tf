@@ -4,6 +4,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "google_storage_bucket" "main" {
+  provider      = google-beta  # Use beta provider for advanced features
   name          = var.bucket_name != "" ? var.bucket_name : "${var.project_id}-consumer-reviews"
   project       = var.project_id
   location      = var.region
@@ -18,6 +19,15 @@ resource "google_storage_bucket" "main" {
     enabled = var.enable_versioning
   }
 
+  # Configure unified logging if enabled
+  dynamic "logging" {
+    for_each = var.enable_access_logs || var.enable_audit_logs ? [1] : []
+    content {
+      log_bucket        = google_storage_bucket.access_logs[0].name
+      log_object_prefix = "logs/"  # Single prefix for all logs
+    }
+  }
+
   # Require secure transport (HTTPS)
   force_destroy = var.force_destroy
   
@@ -29,7 +39,7 @@ resource "google_storage_bucket" "main" {
     }
   }
 
-  # Lifecycle rules
+  # Lifecycle rules for old data archival
   dynamic "lifecycle_rule" {
     for_each = var.enable_lifecycle_rules ? [1] : []
     content {
@@ -39,20 +49,6 @@ resource "google_storage_bucket" "main" {
       action {
         type          = "SetStorageClass"
         storage_class = "COLDLINE"
-      }
-    }
-  }
-
-  # Temporary file cleanup
-  dynamic "lifecycle_rule" {
-    for_each = var.enable_lifecycle_rules ? [1] : []
-    content {
-      condition {
-        matches_prefix = ["temp/"]
-        age           = var.temp_file_age_days
-      }
-      action {
-        type = "Delete"
       }
     }
   }
@@ -74,28 +70,28 @@ resource "google_storage_bucket" "main" {
 # ---------------------------------------------------------------------------------------------------------------------
 # Folder Structure
 # Create the basic folder structure using objects
+# Note: GCS doesn't actually have folders, these are zero-byte objects ending with "/" to simulate folders
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "google_storage_bucket_object" "folders" {
   for_each = toset([
-    "raw/",
-    "raw/reviews/",
-    "processed/",
-    "temp/"
+    "data/",    # Production data files
+    "samples/"  # Sample datasets
   ])
 
-  bucket = google_storage_bucket.main.name
-  name   = each.key
-  content = ""  # Empty content for folders
+  bucket  = google_storage_bucket.main.name
+  name    = each.key
+  content = " "  # Single space with newline - required for object creation
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Logging Configuration
-# Enable access logging if specified
+# Logging Bucket
+# Separate bucket for storing access and audit logs
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "google_storage_bucket" "access_logs" {
-  count         = var.enable_access_logs ? 1 : 0
+  count         = var.enable_access_logs || var.enable_audit_logs ? 1 : 0
+  provider      = google-beta
   name          = "${var.project_id}-consumer-reviews-logs"
   project       = var.project_id
   location      = var.region
@@ -104,6 +100,7 @@ resource "google_storage_bucket" "access_logs" {
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
 
+  # Cleanup old logs based on retention policy
   lifecycle_rule {
     condition {
       age = var.log_retention_days
@@ -114,36 +111,13 @@ resource "google_storage_bucket" "access_logs" {
   }
 }
 
-resource "google_storage_bucket_logging" "main_logging" {
-  count         = var.enable_access_logs ? 1 : 0
-  bucket        = google_storage_bucket.main.name
-  log_bucket    = google_storage_bucket.access_logs[0].name
-  log_object_prefix = "bucket-logs/"
-}
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Audit Configuration
-# Enable audit logging if specified
-# ---------------------------------------------------------------------------------------------------------------------
-
-resource "google_storage_bucket_iam_audit_config" "audit_config" {
-  count  = var.enable_audit_logs ? 1 : 0
-  bucket = google_storage_bucket.main.name
-  
-  audit_log_config {
-    log_type = "DATA_READ"
-  }
-  audit_log_config {
-    log_type = "DATA_WRITE"
-  }
-}
-
 # ---------------------------------------------------------------------------------------------------------------------
 # IAM Configuration
-# Grant BigQuery access to read from the bucket
+# Grant BigQuery access to read from the bucket (only if service account email is provided)
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "google_storage_bucket_iam_member" "bigquery_access" {
+  count  = var.bigquery_service_account_email != null ? 1 : 0
   bucket = google_storage_bucket.main.name
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${var.bigquery_service_account_email}"
